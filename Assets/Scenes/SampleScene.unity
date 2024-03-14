@@ -743,6 +743,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: -13.526
       objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointAxis.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMaxLimits
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMinLimits
+      value: -180
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -767,6 +779,10 @@ PrefabInstance:
     - target: {fileID: 1486268004014133560, guid: 2430e3be343684247883cfe0428bc458, type: 3}
       propertyPath: m_Name
       value: Bone6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1486268004014133560, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2743871716819418044, guid: 2430e3be343684247883cfe0428bc458, type: 3}
       propertyPath: m_LocalPosition.x
@@ -938,6 +954,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 5.104
       objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointAxis.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMaxLimits
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMinLimits
+      value: -90
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -1067,6 +1095,22 @@ PrefabInstance:
     - target: {fileID: 2743871716819418044, guid: 2430e3be343684247883cfe0428bc458, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 29.084
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointAxis.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointAxis.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMaxLimits
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMinLimits
+      value: -20
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1262,6 +1306,18 @@ PrefabInstance:
     - target: {fileID: 2743871716819418044, guid: 2430e3be343684247883cfe0428bc458, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointAxis.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMaxLimits
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 3717816887589686988, guid: 2430e3be343684247883cfe0428bc458, type: 3}
+      propertyPath: jointMinLimits
+      value: -90
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
