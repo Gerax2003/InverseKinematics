@@ -8,7 +8,7 @@ public class Bone : MonoBehaviour
     public Bone parentBone = null;
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         parentBone = transform.parent.GetComponent<Bone>();
 

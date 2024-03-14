@@ -4,7 +4,9 @@ using UnityEngine;
 
 public class IKSolver : MonoBehaviour
 {
+    [SerializeField]
     Bone lastBone;
+    [SerializeField]
     Bone firstBone;
 
     [SerializeField]
@@ -32,36 +34,27 @@ public class IKSolver : MonoBehaviour
     void Update()
     {
         //lastBone.transform.LookAt(target.transform);
-        IKCCD();   
+        IKCCDNoConstraints();   
     }
 
-
-    void IKCCD()
+    void IKCCDNoConstraints()
     {
-        Bone cur = lastBone;
+        Bone joint = lastBone;
 
-        while (cur != null)
+        while (joint != null)
         {
-            // get 3 points
-            Vector3 lastPos = new Vector3(lastBone.transform.position.x, lastBone.transform.position.y, lastBone.transform.position.z);
-            Vector3 targetPos = new Vector3(target.position.x, target.position.y, target.position.z);
-            Vector3 currentPos = new Vector3(cur.transform.position.x, cur.transform.position.y, cur.transform.position.z);
+            // Get rotation to from end effector to target
+            Vector3 toEnd = (lastBone.transform.position - joint.transform.position).normalized;
+            Vector3 toTarget = (target.position - joint.transform.position).normalized;
+            Quaternion q = Quaternion.FromToRotation(toEnd, toTarget);
 
-            // compute cos theta and rotation axis r
-            Vector3 toEnd = (lastPos - currentPos).normalized;
-            Vector3 toTarget = (targetPos - currentPos).normalized;
-            float rotationAngle = Vector3.Dot(toEnd, toTarget);
-            Vector3 axis = Vector3.Cross(toEnd, toTarget);
-
-            // compute quaternion
-            Quaternion q = new Quaternion(axis.x * 0.5f, axis.y * 0.5f, axis.z * 0.5f, (rotationAngle + 1.0f) * 0.5f); //Quaternion.AngleAxis(rotationAngle, axis);
-
-            // update cur joint local rotation with quaternion
-            Quaternion old_gq = cur.transform.rotation;
+            // Update cur joint local rotation with quaternion
+            Quaternion old_gq = joint.transform.rotation;
             Quaternion new_gq = q * old_gq;
-            cur.transform.rotation = new_gq;
+            joint.transform.rotation = new_gq;
 
-            cur = cur.parentBone;
+            // Go up in chain
+            joint = joint.parentBone;
         }
     }
 }
