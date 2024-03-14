@@ -34,27 +34,32 @@ public class IKSolver : MonoBehaviour
     void Update()
     {
         //lastBone.transform.LookAt(target.transform);
-        IKCCDNoConstraints();   
+        CCDNoConstraints();   
     }
 
-    void IKCCDNoConstraints()
+    void CCDNoConstraints()
     {
-        Bone joint = lastBone;
+        Bone bone = lastBone;
 
-        while (joint != null)
+        while (bone != null)
         {
-            // Get rotation to from end effector to target
-            Vector3 toEnd = (lastBone.transform.position - joint.transform.position).normalized;
-            Vector3 toTarget = (target.position - joint.transform.position).normalized;
+            // Get rotation to from bone->end to bone->target, points end to target
+            Vector3 toEnd = (lastBone.transform.position - bone.transform.position).normalized;
+            Vector3 toTarget = (target.position - bone.transform.position).normalized;
             Quaternion q = Quaternion.FromToRotation(toEnd, toTarget);
 
-            // Update cur joint local rotation with quaternion
-            Quaternion old_gq = joint.transform.rotation;
+            // Update cur bone local rotation with quaternion
+            Quaternion old_gq = bone.transform.rotation;
             Quaternion new_gq = q * old_gq;
-            joint.transform.rotation = new_gq;
+            bone.transform.rotation = new_gq;
 
             // Go up in chain
-            joint = joint.parentBone;
+            bone = bone.parentBone;
         }
+    }
+
+    void CCDAxisConstraints()
+    {
+
     }
 }
