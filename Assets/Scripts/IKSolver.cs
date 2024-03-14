@@ -78,15 +78,15 @@ public class IKSolver : MonoBehaviour
             // Force axis constraint
             if (bone.jointAxis != Vector3.zero)
             {
-                Vector3 curHingeAxis = bone.transform.rotation * bone.jointAxis;
-                Vector3 hingeAxis = Vector3.zero;
+                Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
+                Vector3 currParentAxis = Vector3.zero;
                 
                 if (bone.parentBone != null)
-                     hingeAxis = bone.parentBone.transform.rotation * bone.jointAxis;
+                     currParentAxis = bone.parentBone.transform.rotation * bone.jointAxis;
                 else
-                    hingeAxis = Quaternion.identity * bone.jointAxis;
+                    currParentAxis = Quaternion.identity * bone.jointAxis;
 
-                bone.transform.rotation = Quaternion.FromToRotation(curHingeAxis, hingeAxis) * bone.transform.rotation;
+                bone.transform.rotation = Quaternion.FromToRotation(currAxis, currParentAxis) * bone.transform.rotation;
 
                 //Vector3 euler = ClampEuler(bone.transform.eulerAngles, bone.jointMinLimits, bone.jointMaxLimits);
                 //bone.transform.rotation = Quaternion.Euler(euler);
