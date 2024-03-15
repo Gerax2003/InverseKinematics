@@ -5,8 +5,9 @@ using UnityEngine;
 public class IKSolver : MonoBehaviour
 {
     [SerializeField]
+    bool stableAngleLimit = false;
+
     Bone lastBone;
-    [SerializeField]
     Bone firstBone;
 
     [SerializeField]
@@ -88,15 +89,26 @@ public class IKSolver : MonoBehaviour
 
                 bone.transform.rotation = Quaternion.FromToRotation(currAxis, currParentAxis) * bone.transform.rotation;
 
-                //Vector3 euler = ClampEuler(bone.transform.eulerAngles, bone.jointMinLimits, bone.jointMaxLimits);
-                //bone.transform.rotation = Quaternion.Euler(euler);
-
-                Quaternion rot = bone.transform.rotation;
-                Quaternion parentRot = bone.parentBone != null ? bone.parentBone.transform.rotation : Quaternion.identity;
-                // Limit rotation
-                Vector3 perpendicular = Perpendicular(bone.jointAxis);
-                bone.transform.rotation = Quaternion.FromToRotation(rot * perpendicular, 
-                    ConstrainToNormal(rot * perpendicular, parentRot * perpendicular, bone.jointMaxLimits)) * rot;
+                // Bloated implementation but incredibly stable, used for benchmark performance and quality of other implementations, taken from:
+                // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs 
+                // https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
+                if (stableAngleLimit)
+                {
+                    Quaternion rot = bone.transform.rotation;
+                    Quaternion parentRot = bone.parentBone != null ? bone.parentBone.transform.rotation : Quaternion.identity;
+                    // basically the joint's forwards?
+                    Vector3 perpendicular = Perpendicular(bone.jointAxis);
+                    // Find the vector that represents the clamped rotation(?) using current direction and parent's direction (????)
+                    Vector3 constraintVector = ConstrainToNormal(rot * perpendicular, parentRot * perpendicular, bone.jointMaxLimits);
+                    // Find compensating rotation and apply it to unclamped rotation
+                    bone.transform.rotation = Quaternion.FromToRotation(rot * perpendicular, constraintVector) * rot;
+                }
+                else // just clamp the rotation quaternion's angle around its own axis
+                // Known instabilities: stutters on spawn/fast movement, inability to solve then teleportation and reverse joints if range does not cross 0
+                {
+                    Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
+                    bone.transform.localRotation = clampRotation;
+                }
             }
 
             // Go up in chain
@@ -113,25 +125,46 @@ public class IKSolver : MonoBehaviour
     public Vector3 ConstrainToNormal(Vector3 direction, Vector3 normalDirection, float maxAngle)
     {
         if (maxAngle <= 0f) return normalDirection.normalized * direction.magnitude; if (maxAngle >= 180f) return direction;
-        float angle = Mathf.Acos(Mathf.Clamp(Vector3.Dot(direction.normalized, normalDirection.normalized), -1f, 1f)) * Mathf.Rad2Deg;
-        return Vector3.Slerp(direction.normalized, normalDirection.normalized, (angle - maxAngle) / angle) * direction.magnitude;
+
+        float dot = Mathf.Clamp(Vector3.Dot(direction.normalized, normalDirection.normalized), -1f, 1f);
+        float angle = Mathf.Acos(dot) * Mathf.Rad2Deg;
+
+        // direction represents the vector without a rotation, normalDirection the maximum and "(angle - maxAngle) / angle" calculates the clamp??
+        Vector3 ret = Vector3.Slerp(direction.normalized, normalDirection.normalized, (angle - maxAngle) / angle);
+        return ret * direction.magnitude;
     }
 
-    public float ClampAngle(float angle, float min, float max)
+    Quaternion ClampRotation(Quaternion rotation, float minAngle, float maxAngle)
     {
-        float start = (min + max) * 0.5f - 180;
-        float floor = Mathf.FloorToInt((angle - start) / 360) * 360;
-        return Mathf.Clamp(angle, min + floor, max + floor);
+        float angle;
+        Vector3 axis;
+
+        rotation.ToAngleAxis(out angle, out axis);
+
+        // clamp range is -180.180, unity angle range is 0.360 so we convert ranges
+        angle = Angle360To180(angle);
+        angle = Mathf.Clamp(angle, minAngle, maxAngle);
+        angle = Angle180To360(angle);
+
+        Quaternion ret = Quaternion.AngleAxis(angle, axis);
+
+        return ret;
     }
 
-    public Vector3 ClampEuler(Vector3 angle, float minAngle, float maxAngle)
+    // Change angle from 0.360 range to -180.180 range
+    float Angle360To180(float angle)
     {
-        Vector3 outAngle = angle;
+        if (angle <= 180f)
+            return angle;
 
-        outAngle.x = ClampAngle(outAngle.x, minAngle, maxAngle);
-        outAngle.y = ClampAngle(outAngle.y, minAngle, maxAngle);
-        outAngle.z = ClampAngle(outAngle.z, minAngle, maxAngle);
-        
-        return outAngle;
+        return -(360f - angle);
+    }
+    // Change angle from -180.180 range to 0.360 range
+    float Angle180To360(float angle)
+    {
+        if (angle >= 0f)
+            return angle;
+
+        return 360f + angle;
     }
 }
