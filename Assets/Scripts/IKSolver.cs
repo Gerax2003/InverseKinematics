@@ -128,15 +128,52 @@ public class IKSolver : MonoBehaviour
 
         while (bone != null)
         {
-            Vector3 toEnd = (lastBone.transform.position - bone.transform.position); //.normalized;
-            Vector3 toTarget = (target.position - bone.transform.position); //.normalized;
+            Vector3 toEnd = lastBone.transform.position - bone.transform.position; 
+            Vector3 toTarget = target.position - bone.transform.position; 
+            Vector3 toBegin = bone.transform.position - firstBone.transform.position;
 
-            float angle = Mathf.Acos(Vector3.Dot(toEnd, toTarget));
+            float a = toBegin.magnitude;
+            float b = toEnd.magnitude;
+            float c = toTarget.magnitude;
 
-            Vector3 cross = Vector3.Cross(toEnd, toTarget);
-            Vector3 axis = DivideVector(cross, cross.normalized);
+            if (c > a + b)
+            {
+                //Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, -toTarget.normalized);
 
-            // Go up in chain
+                //// Update bone rotation to point end to target
+                //Quaternion oldRot = bone.transform.rotation;
+                //bone.transform.rotation = rot * oldRot;
+
+                bone.transform.forward = toTarget.normalized;
+            }
+            else if (c < Mathf.Abs(a - b))
+            {
+                //Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, toTarget.normalized);
+
+                //// Update bone rotation to point end to target
+                //Quaternion oldRot = bone.transform.rotation;
+                //bone.transform.rotation = rot * oldRot;
+
+                bone.transform.forward = -toTarget.normalized;
+            }
+            else
+            {
+                // angle of the abc triangle, used to calculate angle needed for joint to rotate
+                float deltaB = Mathf.Acos(-(b*b - a*a - c*c)/2*a*c);
+
+                // get angle to rotate to form abc triangle, fullAngle - triangleAngle
+                float theta = Mathf.Acos(Vector3.Dot(bone.transform.forward, toTarget.normalized)) - deltaB;
+
+                Vector3 axis = Vector3.up;
+                if (bone.transform.forward != toTarget.normalized && bone.transform.forward != -toTarget.normalized) 
+                    axis = Vector3.Cross(bone.transform.forward, toTarget.normalized);
+
+#pragma warning disable CS0618 // AxisAngle is deprecated because it uses radians. I don't want to convert to deg in this one to maintain performance & clarity
+                bone.transform.rotation = Quaternion.AxisAngle(axis, theta) * bone.transform.rotation;
+#pragma warning restore CS0618 
+            }
+
+            // Go down in chain
             bone = bone.childBone;
         }
     }

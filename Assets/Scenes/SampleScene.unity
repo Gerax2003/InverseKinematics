@@ -214,6 +214,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c11cc3af369344942a10e59b58e34a72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  type: 1
   useConstraints: 1
   useAngleLimit: 1
   stableAngleLimit: 0
@@ -328,6 +329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c11cc3af369344942a10e59b58e34a72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  type: 1
   useConstraints: 0
   useAngleLimit: 0
   stableAngleLimit: 0
