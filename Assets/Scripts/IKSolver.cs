@@ -1,9 +1,24 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR;
+
+public enum IKType
+{
+    CCD,
+    TRIANGULATION,
+}
 
 public class IKSolver : MonoBehaviour
 {
+    [SerializeField]
+    IKType type = IKType.CCD;
+
+    [SerializeField]
+    bool useConstraints = true;
+    [SerializeField]
+    bool useAngleLimit = true;
+
     [SerializeField]
     bool stableAngleLimit = false;
 
@@ -34,27 +49,29 @@ public class IKSolver : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //lastBone.transform.LookAt(target.transform);
-        //CCDNoConstraints(); 
-        CCDConstraints();
+        switch (type)
+        {
+            case IKType.CCD:
+                if (useConstraints)
+                    CCDConstraints();
+                else
+                    CCDNoConstraints();
+                break;
+            case IKType.TRIANGULATION:
+                CCDTriangulation();
+                break;
+        }
     }
 
+#region CCD
     void CCDNoConstraints()
     {
         Bone bone = lastBone;
 
         while (bone != null)
         {
-            // Get rotation to from bone->end to bone->target, points end to target
-            Vector3 toEnd = (lastBone.transform.position - bone.transform.position).normalized;
-            Vector3 toTarget = (target.position - bone.transform.position).normalized;
-            Quaternion q = Quaternion.FromToRotation(toEnd, toTarget);
-
-            // Update bone rotation to point end to target
-            Quaternion old_gq = bone.transform.rotation;
-            Quaternion new_gq = q * old_gq;
-            bone.transform.rotation = new_gq;
-
+            bone.transform.rotation = bone.transform.rotation = CCDRotateToPointLast(bone);
+            
             // Go up in chain
             bone = bone.parentBone;
         }
@@ -66,17 +83,9 @@ public class IKSolver : MonoBehaviour
 
         while (bone != null)
         {
-            // Get rotation to from bone->end to bone->target, points end to target
-            Vector3 toEnd = (lastBone.transform.position - bone.transform.position).normalized;
-            Vector3 toTarget = (target.position - bone.transform.position).normalized;
-            Quaternion q = Quaternion.FromToRotation(toEnd, toTarget);
+            bone.transform.rotation = CCDRotateToPointLast(bone);
 
-            // Update bone rotation to point end to target
-            Quaternion old_gq = bone.transform.rotation;
-            Quaternion new_gq = q * old_gq;
-            bone.transform.rotation = new_gq;
-
-            // Force axis constraint
+            // If the bone has an axis to constrain on, constrain
             if (bone.jointAxis != Vector3.zero)
             {
                 Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
@@ -89,25 +98,22 @@ public class IKSolver : MonoBehaviour
 
                 bone.transform.rotation = Quaternion.FromToRotation(currAxis, currParentAxis) * bone.transform.rotation;
 
-                // Bloated implementation but incredibly stable, used for benchmark performance and quality of other implementations, taken from:
-                // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs 
-                // https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
-                if (stableAngleLimit)
+                if (useAngleLimit)
                 {
-                    Quaternion rot = bone.transform.rotation;
-                    Quaternion parentRot = bone.parentBone != null ? bone.parentBone.transform.rotation : Quaternion.identity;
-                    // basically the joint's forwards?
-                    Vector3 perpendicular = Perpendicular(bone.jointAxis);
-                    // Find the vector that represents the clamped rotation(?) using current direction and parent's direction (????)
-                    Vector3 constraintVector = ConstrainToNormal(rot * perpendicular, parentRot * perpendicular, bone.jointMaxLimits);
-                    // Find compensating rotation and apply it to unclamped rotation
-                    bone.transform.rotation = Quaternion.FromToRotation(rot * perpendicular, constraintVector) * rot;
-                }
-                else // just clamp the rotation quaternion's angle around its own axis
-                // Known instabilities: stutters on spawn/fast movement, inability to solve then teleportation and reverse joints if range does not cross 0
-                {
-                    Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
-                    bone.transform.localRotation = clampRotation;
+                    // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
+                    // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
+                    // !! Only takes max angle into account, needs a positive max! !!
+                    if (stableAngleLimit)
+                    {
+                        // Find compensating rotation and apply it to unclamped rotation
+                        bone.transform.rotation = CCDAngleStableImpl(bone);
+                    }
+                    else // just clamp the rotation quaternion's angle around its own axis
+                         // Known instabilities: stutters on spawn/fast movement, inability to solve then teleportation and reverse joints if range does not cross 0
+                    {
+                        Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
+                        bone.transform.localRotation = clampRotation;
+                    }
                 }
             }
 
@@ -116,12 +122,62 @@ public class IKSolver : MonoBehaviour
         }
     }
 
+    void CCDTriangulation()
+    {
+        Bone bone = firstBone;
+
+        while (bone != null)
+        {
+            Vector3 toEnd = (lastBone.transform.position - bone.transform.position); //.normalized;
+            Vector3 toTarget = (target.position - bone.transform.position); //.normalized;
+
+            float angle = Mathf.Acos(Vector3.Dot(toEnd, toTarget));
+
+            Vector3 cross = Vector3.Cross(toEnd, toTarget);
+            Vector3 axis = DivideVector(cross, cross.normalized);
+
+            // Go up in chain
+            bone = bone.childBone;
+        }
+    }
+
+    // First step for CCD, point current bone in a way that moves last bone as close as the target as possible
+    Quaternion CCDRotateToPointLast(Bone bone)
+    {
+        // Get rotation to from bone->end to bone->target, points end to target
+        Vector3 toEnd = (lastBone.transform.position - bone.transform.position).normalized;
+        Vector3 toTarget = (target.position - bone.transform.position).normalized;
+        Quaternion rot = Quaternion.FromToRotation(toEnd, toTarget);
+
+        // Update bone rotation to point end to target
+        Quaternion oldRot = bone.transform.rotation;
+        Quaternion newRot = rot * oldRot;
+        return newRot;
+    }
+
+    #region CCD STABLE
+    // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
+    // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
+    // !! Only takes max angle into account, needs a positive max! !!
+    Quaternion CCDAngleStableImpl(Bone bone)
+    {
+        Quaternion rot = bone.transform.rotation;
+        Quaternion parentRot = bone.parentBone != null ? bone.parentBone.transform.rotation : Quaternion.identity;
+        // basically the joint's forwards?
+        Vector3 perpendicular = Perpendicular(bone.jointAxis);
+        // Find the vector that represents the clamped rotation(?) using current direction and parent's direction (????)
+        Vector3 constraintVector = ConstrainToNormal(rot * perpendicular, parentRot * perpendicular, bone.jointMaxLimits);
+        // Find compensating rotation to apply to unclamped rotation
+        return Quaternion.FromToRotation(rot * perpendicular, constraintVector) * rot;
+    }
+
+    // used by stable implementation, not mine
     public Vector3 Perpendicular(Vector3 vec)
     {
         return Mathf.Abs(vec.x) > Mathf.Abs(vec.z) ? new Vector3(-vec.y, vec.x, 0f)
                                                    : new Vector3(0f, -vec.z, vec.y);
     }
-
+    // used by stable implementation, not mine
     public Vector3 ConstrainToNormal(Vector3 direction, Vector3 normalDirection, float maxAngle)
     {
         if (maxAngle <= 0f) return normalDirection.normalized * direction.magnitude; if (maxAngle >= 180f) return direction;
@@ -132,6 +188,15 @@ public class IKSolver : MonoBehaviour
         // direction represents the vector without a rotation, normalDirection the maximum and "(angle - maxAngle) / angle" calculates the clamp??
         Vector3 ret = Vector3.Slerp(direction.normalized, normalDirection.normalized, (angle - maxAngle) / angle);
         return ret * direction.magnitude;
+    }
+    #endregion
+
+#endregion
+
+#region UTILITIES
+    Vector3 DivideVector(Vector3 v1, Vector3 v2)
+    {
+        return new Vector3(v1.x/v2.x, v1.y/v2.y, v1.z/v2.z);
     }
 
     Quaternion ClampRotation(Quaternion rotation, float minAngle, float maxAngle)
@@ -150,7 +215,6 @@ public class IKSolver : MonoBehaviour
 
         return ret;
     }
-
     // Change angle from 0.360 range to -180.180 range
     float Angle360To180(float angle)
     {
@@ -167,4 +231,5 @@ public class IKSolver : MonoBehaviour
 
         return 360f + angle;
     }
+#endregion
 }
