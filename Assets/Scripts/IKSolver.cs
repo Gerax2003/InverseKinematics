@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.PlasticSCM.Editor.WebApi;
 using UnityEngine;
 using UnityEngine.XR;
 
@@ -41,7 +42,7 @@ public class IKSolver : MonoBehaviour
                 continue;
             }
 
-            lastBone = currBone; 
+            lastBone = currBone;
             break;
         }
     }
@@ -63,7 +64,7 @@ public class IKSolver : MonoBehaviour
         }
     }
 
-#region CCD
+    #region CCD
     void CCDNoConstraints()
     {
         Bone bone = lastBone;
@@ -71,7 +72,7 @@ public class IKSolver : MonoBehaviour
         while (bone != null)
         {
             bone.transform.rotation = bone.transform.rotation = CCDRotateToPointLast(bone);
-            
+
             // Go up in chain
             bone = bone.parentBone;
         }
@@ -90,9 +91,9 @@ public class IKSolver : MonoBehaviour
             {
                 Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
                 Vector3 currParentAxis = Vector3.zero;
-                
+
                 if (bone.parentBone != null)
-                     currParentAxis = bone.parentBone.transform.rotation * bone.jointAxis;
+                    currParentAxis = bone.parentBone.transform.rotation * bone.jointAxis;
                 else
                     currParentAxis = Quaternion.identity * bone.jointAxis;
 
@@ -128,46 +129,47 @@ public class IKSolver : MonoBehaviour
 
         while (bone != null)
         {
-            Vector3 toEnd = lastBone.transform.position - bone.transform.position; 
-            Vector3 toTarget = target.position - bone.transform.position; 
+            Vector3 toEnd = lastBone.transform.position - bone.transform.position;
+            Vector3 toTarget = target.position - bone.transform.position;
             Vector3 toBegin = bone.transform.position - firstBone.transform.position;
 
-            float a = toBegin.magnitude;
-            float b = toEnd.magnitude;
+            float a = GetALength(bone);
+            float b = GetBLength(bone);
             float c = toTarget.magnitude;
 
             if (c > a + b)
             {
-                //Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, -toTarget.normalized);
+                Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, toTarget.normalized);
 
-                //// Update bone rotation to point end to target
-                //Quaternion oldRot = bone.transform.rotation;
-                //bone.transform.rotation = rot * oldRot;
+                // Update bone rotation to point end to target
+                Quaternion oldRot = bone.transform.rotation;
+                bone.transform.rotation = rot * oldRot;
 
-                bone.transform.forward = toTarget.normalized;
+                //bone.transform.forward = toTarget.normalized;
             }
             else if (c < Mathf.Abs(a - b))
             {
-                //Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, toTarget.normalized);
+                Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, -toTarget.normalized);
 
-                //// Update bone rotation to point end to target
-                //Quaternion oldRot = bone.transform.rotation;
-                //bone.transform.rotation = rot * oldRot;
+                // Update bone rotation to point end to target
+                Quaternion oldRot = bone.transform.rotation;
+                bone.transform.rotation = rot * oldRot;
 
-                bone.transform.forward = -toTarget.normalized;
+                //bone.transform.forward = -toTarget.normalized;
             }
             else
             {
                 // angle of the abc triangle, used to calculate angle needed for joint to rotate
-                float deltaB = Mathf.Acos(-(b*b - a*a - c*c)/2*a*c);
+                float deltaB = Mathf.Acos(-(b * b - a * a - c * c) / (2 * a * c));
 
                 // get angle to rotate to form abc triangle, fullAngle - triangleAngle
                 float theta = Mathf.Acos(Vector3.Dot(bone.transform.forward, toTarget.normalized)) - deltaB;
 
                 Vector3 axis = Vector3.up;
-                if (bone.transform.forward != toTarget.normalized && bone.transform.forward != -toTarget.normalized) 
+                if (bone.transform.forward != toTarget.normalized && bone.transform.forward != -toTarget.normalized)
                     axis = Vector3.Cross(bone.transform.forward, toTarget.normalized);
 
+                Debug.Log(bone.name + ", theta = " + theta.ToString() + ", axis = " + axis.ToString());
 #pragma warning disable CS0618 // AxisAngle is deprecated because it uses radians. I don't want to convert to deg in this one to maintain performance & clarity
                 bone.transform.rotation = Quaternion.AxisAngle(axis, theta) * bone.transform.rotation;
 #pragma warning restore CS0618 
@@ -190,6 +192,33 @@ public class IKSolver : MonoBehaviour
         Quaternion oldRot = bone.transform.rotation;
         Quaternion newRot = rot * oldRot;
         return newRot;
+    }
+
+    float GetALength(Bone bone)
+    {
+        float length = 0.0001f;
+
+        Bone currBone = bone.parentBone;
+        while (currBone != null) 
+        {
+            length += currBone.length;
+            currBone = currBone.parentBone;
+        }
+
+        return length;
+    }
+    float GetBLength(Bone bone)
+    {
+        float length = 0f;
+
+        Bone currBone = bone;
+        while (currBone != null)
+        {
+            length += currBone.length;
+            currBone = currBone.childBone;
+        }
+
+        return length;
     }
 
     #region CCD STABLE

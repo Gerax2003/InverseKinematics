@@ -7,6 +7,9 @@ public class Bone : MonoBehaviour
     public Bone childBone = null;
     public Bone parentBone = null;
 
+    [HideInInspector]
+    public float length = 0.0001f; // not 0 to avoid potential issues
+
     public Vector3 jointAxis = Vector3.zero;
     public float jointMinLimits = -360f;
     public float jointMaxLimits = 360f;
@@ -26,6 +29,7 @@ public class Bone : MonoBehaviour
             if (b != this && b.transform.IsChildOf(transform))
             {
                 childBone = b;
+                length = (childBone.transform.position - transform.position).magnitude;
                 return;
             }
         }
