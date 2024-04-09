@@ -1,8 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.PlasticSCM.Editor.WebApi;
+using System.Diagnostics;
+using TMPro;
 using UnityEngine;
-using UnityEngine.XR;
+using Debug = UnityEngine.Debug;
 
 public enum IKType
 {
@@ -12,6 +11,11 @@ public enum IKType
 
 public class IKSolver : MonoBehaviour
 {
+    [SerializeField]
+    TMP_Text statsText;
+
+    int chainLen = 0;
+
     [SerializeField]
     IKType type = IKType.CCD;
 
@@ -36,6 +40,8 @@ public class IKSolver : MonoBehaviour
         Bone currBone = firstBone;
         while (currBone != null)
         {
+            chainLen++;
+
             if (currBone.childBone != null)
             {
                 currBone = currBone.childBone;
@@ -50,6 +56,14 @@ public class IKSolver : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        statsText.text = "Type: " + type.ToString() + "\n"
+            + "Length: " + chainLen + "\n"
+            + "Angle limit: " + useAngleLimit.ToString() + "\n"
+            + "Stable limiter: " + stableAngleLimit.ToString() + "\n"
+            + "Axis constraints: " + useConstraints.ToString() + "\n";
+
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
         switch (type)
         {
             case IKType.CCD:
@@ -62,28 +76,49 @@ public class IKSolver : MonoBehaviour
                 CCDTriangulation();
                 break;
         }
+        stopwatch.Stop();
+
+        statsText.text += "Total time: " + stopwatch.Elapsed.TotalMilliseconds + " ms\n";
     }
 
-    #region CCD
+#region CCD
     void CCDNoConstraints()
     {
+        Stopwatch stopwatch = new Stopwatch();
+        double totalTime = 0d;
+        int i = 0;
+
         Bone bone = lastBone;
 
         while (bone != null)
         {
+            stopwatch.Start();
             bone.transform.rotation = bone.transform.rotation = CCDRotateToPointLast(bone);
 
             // Go up in chain
             bone = bone.parentBone;
+
+            stopwatch.Stop();
+            totalTime += stopwatch.Elapsed.TotalMilliseconds;
+            i++;
         }
+
+        statsText.text += "Avg iteration: " + totalTime / i + " ms\n";
     }
 
     void CCDConstraints()
     {
+        Stopwatch constraintStopwatch = new Stopwatch();
+        Stopwatch stopwatch = new Stopwatch();
+        double totalTime = 0d;
+        double totalConstraintTime = 0d;
+        int i = 0;
+
         Bone bone = lastBone;
 
         while (bone != null)
         {
+            stopwatch.Start();
             bone.transform.rotation = CCDRotateToPointLast(bone);
 
             // If the bone has an axis to constrain on, constrain
@@ -101,6 +136,8 @@ public class IKSolver : MonoBehaviour
 
                 if (useAngleLimit)
                 {
+                    constraintStopwatch.Start();
+
                     // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
                     // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
                     // !! Only takes max angle into account, needs a positive max! !!
@@ -115,28 +152,47 @@ public class IKSolver : MonoBehaviour
                         Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
                         bone.transform.localRotation = clampRotation;
                     }
+
+                    constraintStopwatch.Stop();
+                    totalConstraintTime += stopwatch.Elapsed.TotalMilliseconds;
                 }
             }
 
             // Go up in chain
             bone = bone.parentBone;
+
+            stopwatch.Stop();
+            totalTime += stopwatch.Elapsed.TotalMilliseconds;
+            i++;
         }
+
+        statsText.text += "Avg constraint: " + totalConstraintTime / i + " ms\n";
+        statsText.text += "Avg iteration: " + totalTime / i + " ms\n";
     }
 
     void CCDTriangulation()
     {
+        Stopwatch stopwatch = new Stopwatch();
+        double totalTime = 0d;
+        int i = 0;
+
+        // triangulation starts from beginning, not end (closer to reality)
         Bone bone = firstBone;
 
         while (bone != null)
         {
+            stopwatch.Start();
+
             Vector3 toEnd = lastBone.transform.position - bone.transform.position;
             Vector3 toTarget = target.position - bone.transform.position;
             Vector3 toBegin = bone.transform.position - firstBone.transform.position;
 
-            float a = GetALength(bone);
-            float b = GetBLength(bone);
-            float c = toTarget.magnitude;
+            float a = GetALength(bone); // Chain length from effector to begin
+            float b = GetBLength(bone); // Chain length from effector to end
+            float c = toTarget.magnitude; // length from effector to target
 
+            // abc triangle is impossible because distance to effector is longer than the chain, we force the rotation to get chain's end closer
+            // (???, explanations unclear in research paper, need to find better explanation in other sources)
             if (c > a + b)
             {
                 Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, toTarget.normalized);
@@ -147,6 +203,8 @@ public class IKSolver : MonoBehaviour
 
                 //bone.transform.forward = toTarget.normalized;
             }
+            // abc triangle is impossible because distance to effector is not the longest side of the triangle (?), we force the rotation to get chain's end further
+            // (???, explanations unclear in research paper, need to find better explanation in other sources)
             else if (c < Mathf.Abs(a - b))
             {
                 Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, -toTarget.normalized);
@@ -177,7 +235,13 @@ public class IKSolver : MonoBehaviour
 
             // Go down in chain
             bone = bone.childBone;
+
+            stopwatch.Stop();
+            totalTime += stopwatch.Elapsed.TotalMilliseconds;
+            i++;
         }
+
+        statsText.text += "Avg iteration: " + totalTime / i + " ms\n";
     }
 
     // First step for CCD, point current bone in a way that moves last bone as close as the target as possible
@@ -194,6 +258,7 @@ public class IKSolver : MonoBehaviour
         return newRot;
     }
 
+    #region TRIANGULATION UTILS
     float GetALength(Bone bone)
     {
         float length = 0.0001f;
@@ -207,6 +272,7 @@ public class IKSolver : MonoBehaviour
 
         return length;
     }
+
     float GetBLength(Bone bone)
     {
         float length = 0f;
@@ -220,6 +286,7 @@ public class IKSolver : MonoBehaviour
 
         return length;
     }
+    #endregion
 
     #region CCD STABLE
     // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:

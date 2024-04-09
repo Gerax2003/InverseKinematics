@@ -4,7 +4,9 @@ using UnityEngine;
 
 public class Bone : MonoBehaviour
 {
+    [HideInInspector]
     public Bone childBone = null;
+    [HideInInspector]
     public Bone parentBone = null;
 
     [HideInInspector]
