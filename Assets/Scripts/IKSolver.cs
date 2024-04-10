@@ -153,23 +153,23 @@ public class IKSolver : MonoBehaviour
 
             Vector3 toTarget = target.position - bone.transform.position;
 
-            float a = GetALength(bone); // Chain length from effector to begin
-            float b = GetBLength(bone); // Chain length from effector to end
+            float a = bone.length; // a is the length of the current joint
+            float b = GetBLength(bone); // Chain length from the end of current joint to end of chain
             float c = toTarget.magnitude; // length from effector to target
 
-            // abc triangle is impossible because distance to effector is longer than the chain, we force the rotation to get chain's end closer
-            // (???, explanations unclear in research paper, need to find better explanation in other sources)
+            // abc triangle is impossible because distance to effector is longer than the whole remaining chain, we force the rotation to get chain's end closer
+            // in other words, the necessary rotation was made so we make our way back to the target
             if (c > a + b)
             {
                 bone.transform.forward = toTarget.normalized;
             }
-            // abc triangle is impossible because distance to effector is not the longest side of the triangle (?), we force the rotation to get chain's end further
-            // (???, explanations unclear in research paper, need to find better explanation in other sources)
+            // abc triangle is impossible because distance to effector is not the longest side of the triangle, we force the rotation to get chain's end further
+            // in other words, the necessary rotation needs to be done further so we go away from the target
             else if (c < Mathf.Abs(a - b))
             {
                 bone.transform.forward = -toTarget.normalized;
             }
-            //
+            // triangle can be made, therefore we can find a rotation that solves the chain at this joint
             else
             {
                 // angle of the abc triangle, used to calculate angle needed for joint to rotate
@@ -258,22 +258,6 @@ public class IKSolver : MonoBehaviour
     }
 
     #region TRIANGULATION UTILS
-    float GetALength(Bone bone)
-    {
-        return bone.length;
-
-        float length = 0.0001f;
-
-        Bone currBone = bone.parentBone;
-        while (currBone != null) 
-        {
-            length += currBone.length;
-            currBone = currBone.parentBone;
-        }
-
-        return length;
-    }
-
     float GetBLength(Bone bone)
     {
         float length = 0.0001f;

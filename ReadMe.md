@@ -6,7 +6,7 @@
 -[Instructions](#instructions)  
 -[Benchmark](#benchmark)  
 -[Screenshots](#screens)  
--[References](#references)  
+-[Sources](#references)  
 
 
 ## <h2 id="implements">Currently implemented</h2>
@@ -14,15 +14,16 @@ CCD Algorithm
 CCD Axis constraints  
 CCD Angle constraints  
 Time Benchmarking  
+Triangulation improvement on CCD  
 
 ## <h2 id="wip">WIP</h2>
-Triangulation improvement on CCD  
 Angular Benchmarking (total angle moved, avg angle movement...)  
 FABRIK  
 FABRIK constraints  
 Support for skeletal meshes  
 Annealing for CCD (raises the chance of success)  
 CCD 5-Dof optimization (more natural, faster by the looks of it, only mention found [here](https://zalo.github.io/blog/inverse-kinematics/#bonus-direction))  
+Constraints on Triangulation  
 
 ## <h2 id="instructions">Instructions</h2>
 Z/Q/S/D to move the target (red ball) horizontally, space/lshift to go up/down. All three chains should try to point towards a target, the long chain having its own separate target to make viewing the movements on the small chains easier.  
@@ -40,7 +41,7 @@ To setup constraints on a bone, you can just check the "Bone" script in the insp
 **Chain Inspector:**  
 When clicking on a chain, you can find the IK Solver component. This is where you can setup the solver's parameters.  
 ![Editor](ReadMeResources/editor.png)  
-- "Type" changes the type of the solver, currently CCD and Triangulation, however triangulation is not working currently.  
+- "Type" changes the type of the solver, currently CCD and Triangulation, however keep in mind that triangulation is not working with constraints currently.  
 - "Use Constraints" will enable the axis constraint on the chain, making each joint rotate around its defined axis. If a bone has an axis of (0, 0, 0), no constraint will be applied.  
 - "Use Angle Limit" will enable the angular limit of the chain's bones. This has no effect if "Use Constraints" is not enabled.  
 - "Stable Angle Limit" will change the calculations of the angle limit to use an implementation I found on one of my sources. This implementation is slightly slower and used mostly to compare my own implementation, and produces different results by default as the angles used by it are in range [0; 360] where I use [-180; 180].  
@@ -49,7 +50,7 @@ When clicking on a chain, you can find the IK Solver component. This is where yo
 
 ## <h2 id="benchmark">Benchmark</h2>
 
-Benchmarks have been done on each chain present in the scene. The only configuration not tested was using Triangulation, as the algorithm, while implemented as the papers should say, does not give correct results.  
+Benchmarks have been done on each chain present in the scene. The only configuration not tested was using Triangulation and constraints, as the algorithm doesn't seem to work with the same constraints calculations used for CCD, and there was no mention of constraints implementation in my sources.  
 The names in this table are the name of the chain in the hierarchy. In every test, the target has been placed in a spot that the chain can reach.  
 "Chain" has constraints in every bone, "Chain2" has constraints in every bone except the 3rd and 5th (last), and "LongChain" has constraints in every bone except every 5th bone.  
 
@@ -59,9 +60,13 @@ The names in this table are the name of the chain in the hierarchy. In every tes
 | Chain2    | Average iteration: 0.005ms<br>Total: 0.013 - 0.014ms     | Average iteration: 0.14 - 0.15ms<br>Total: 0.26 - 0.27ms  | Average iteration: 0.005 - 0.006ms<br>Total: 0.018 - 0.020ms | Average constraint: 0.005ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.020 - 0.023ms | Average constraint: 0.005 - 0.006ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.021 - 0.024ms |
 | LongChain | Average iteration: 0.06 - 0.07ms<br>Total: 0.12 - 0.13ms | Average iteration: 0.22 - 0.26ms<br>Total: 0.43 - 0.52ms  | Average iteration: 0.08 - 0.10ms<br>Total: 0.16 - 0.18ms     | Average constraint: 0.08ms<br>Average iteration: 0.09 - 0.11ms<br>Total: 0.19 - 0.20ms      | Average constraint: 0.09 - 0.10ms<br>Average iteration: 0.11 - 0.12ms<br>Total: 0.22 - 0.23ms       |  
 
-As we can see, there is a massive increase in total time as the chain gets longer, but also in the time spent per iteration. We also see that having bones without constraints can significantly reduce the time spent computing the chain. Triangulation produces worse results than CCD on small chains due to its heavy calculations for its rotations, however its cost growth is steady as only a few bones actually have to rotate.  
+As we can see, there is a massive increase in total time as the chain gets longer, but also in the time spent per iteration. We also see that having bones without constraints can significantly reduce the time spent computing the chain.  
+Triangulation produces worse results than CCD on small chains due to its heavy calculations for its rotations, however its cost growth is steady as only a few bones actually have to rotate.  
 
 ## <h2 id="screens">Screenshots</h2>
+
+![Runtime](ReadMeResources/runtime.gif)  
+This is how the chains should behave with CCD and Triangulation.  
 
 ![CCD](ReadMeResources/CCD.png)  
 Two chains solved using CCD. The left chain has axis and angle constraints enabled, the right chain hasn't.    
@@ -70,9 +75,9 @@ Two chains solved using CCD. The left chain has axis and angle constraints enabl
 This is how the scene looks like in play mode. The texts display the current settings of a chain and the time it takes to solve in real time.  
 
 ![triangulation](ReadMeResources/triangulation.png)  
-This is how Triangulation looks when solving a chain. It looks very inorganic but is very optimized, and thus is mostly used with mechanic chains.
+This is how Triangulation looks when solving a chain. It looks very inorganic but is very optimized in terms of rotations done, and thus is mostly used with mechanic chains. Current implementation commonly causes jitters, need to fix that.  
 
-## <h2 id="references">References</h2>
+## <h2 id="references">Sources</h2>
 
 #### CCD:  
 Base CCD:  

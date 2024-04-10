@@ -220,7 +220,7 @@ MonoBehaviour:
   statsText: {fileID: 1487276753}
   type: 1
   useConstraints: 0
-  useAngleLimit: 1
+  useAngleLimit: 0
   stableAngleLimit: 0
   target: {fileID: 1408338268}
 --- !u!4 &31003753
