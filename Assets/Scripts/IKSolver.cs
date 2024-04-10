@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using TMPro;
 using UnityEngine;
+using UnityEngine.XR;
 using Debug = UnityEngine.Debug;
 
 public enum IKType
@@ -121,42 +122,7 @@ public class IKSolver : MonoBehaviour
             stopwatch.Start();
             bone.transform.rotation = CCDRotateToPointLast(bone);
 
-            // If the bone has an axis to constrain on, constrain
-            if (bone.jointAxis != Vector3.zero)
-            {
-                Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
-                Vector3 currParentAxis = Vector3.zero;
-
-                if (bone.parentBone != null)
-                    currParentAxis = bone.parentBone.transform.rotation * bone.jointAxis;
-                else
-                    currParentAxis = Quaternion.identity * bone.jointAxis;
-
-                bone.transform.rotation = Quaternion.FromToRotation(currAxis, currParentAxis) * bone.transform.rotation;
-
-                if (useAngleLimit)
-                {
-                    constraintStopwatch.Start();
-
-                    // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
-                    // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
-                    // !! Only takes max angle into account, needs a positive max! !!
-                    if (stableAngleLimit)
-                    {
-                        // Find compensating rotation and apply it to unclamped rotation
-                        bone.transform.rotation = CCDAngleStableImpl(bone);
-                    }
-                    else // just clamp the rotation quaternion's angle around its own axis
-                         // Known instabilities: stutters on spawn/fast movement, inability to solve then teleportation and reverse joints if range does not cross 0
-                    {
-                        Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
-                        bone.transform.localRotation = clampRotation;
-                    }
-
-                    constraintStopwatch.Stop();
-                    totalConstraintTime += stopwatch.Elapsed.TotalMilliseconds;
-                }
-            }
+            CCDConstraintCalculation(bone, constraintStopwatch, ref totalConstraintTime);
 
             // Go up in chain
             bone = bone.parentBone;
@@ -174,6 +140,8 @@ public class IKSolver : MonoBehaviour
     {
         Stopwatch stopwatch = new Stopwatch();
         double totalTime = 0d;
+        Stopwatch constraintStopwatch = new Stopwatch();
+        double totalConstraintTime = 0d;
         int i = 0;
 
         // triangulation starts from beginning, not end (closer to reality)
@@ -183,9 +151,7 @@ public class IKSolver : MonoBehaviour
         {
             stopwatch.Start();
 
-            Vector3 toEnd = lastBone.transform.position - bone.transform.position;
             Vector3 toTarget = target.position - bone.transform.position;
-            Vector3 toBegin = bone.transform.position - firstBone.transform.position;
 
             float a = GetALength(bone); // Chain length from effector to begin
             float b = GetBLength(bone); // Chain length from effector to end
@@ -195,26 +161,15 @@ public class IKSolver : MonoBehaviour
             // (???, explanations unclear in research paper, need to find better explanation in other sources)
             if (c > a + b)
             {
-                Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, toTarget.normalized);
-
-                // Update bone rotation to point end to target
-                Quaternion oldRot = bone.transform.rotation;
-                bone.transform.rotation = rot * oldRot;
-
-                //bone.transform.forward = toTarget.normalized;
+                bone.transform.forward = toTarget.normalized;
             }
             // abc triangle is impossible because distance to effector is not the longest side of the triangle (?), we force the rotation to get chain's end further
             // (???, explanations unclear in research paper, need to find better explanation in other sources)
             else if (c < Mathf.Abs(a - b))
             {
-                Quaternion rot = Quaternion.FromToRotation(bone.transform.forward, -toTarget.normalized);
-
-                // Update bone rotation to point end to target
-                Quaternion oldRot = bone.transform.rotation;
-                bone.transform.rotation = rot * oldRot;
-
-                //bone.transform.forward = -toTarget.normalized;
+                bone.transform.forward = -toTarget.normalized;
             }
+            //
             else
             {
                 // angle of the abc triangle, used to calculate angle needed for joint to rotate
@@ -233,6 +188,9 @@ public class IKSolver : MonoBehaviour
 #pragma warning restore CS0618 
             }
 
+            if (useConstraints)
+                CCDConstraintCalculation(bone, constraintStopwatch, ref totalConstraintTime);
+
             // Go down in chain
             bone = bone.childBone;
 
@@ -242,6 +200,47 @@ public class IKSolver : MonoBehaviour
         }
 
         statsText.text += "Avg iteration: " + totalTime / i + " ms\n";
+    }
+
+    // This function constrains the rotation around the bone's axis by the angle limit defined
+    void CCDConstraintCalculation(Bone bone, Stopwatch constraintStopwatch, ref double totalConstraintTime)
+    {
+        // If the bone has an axis to constrain on, constrain
+        if (bone.jointAxis != Vector3.zero)
+        {
+            constraintStopwatch.Start();
+            Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
+            Vector3 currParentAxis = Vector3.zero;
+
+            if (bone.parentBone != null)
+                currParentAxis = bone.parentBone.transform.rotation * bone.jointAxis;
+            else
+                currParentAxis = Quaternion.identity * bone.jointAxis;
+
+            bone.transform.rotation = Quaternion.FromToRotation(currAxis, currParentAxis) * bone.transform.rotation;
+
+            if (useAngleLimit)
+            {
+
+                // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
+                // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
+                // !! Only takes max angle into account, needs a positive max! !!
+                if (stableAngleLimit)
+                {
+                    // Find compensating rotation and apply it to unclamped rotation
+                    bone.transform.rotation = CCDAngleStableImpl(bone);
+                }
+                else // just clamp the rotation quaternion's angle around its own axis
+                     // Known instabilities: stutters on spawn/fast movement, inability to solve then teleportation and reverse joints if range does not cross 0
+                {
+                    Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
+                    bone.transform.localRotation = clampRotation;
+                }
+
+                constraintStopwatch.Stop();
+                totalConstraintTime += constraintStopwatch.Elapsed.TotalMilliseconds;
+            }
+        }
     }
 
     // First step for CCD, point current bone in a way that moves last bone as close as the target as possible
@@ -261,6 +260,8 @@ public class IKSolver : MonoBehaviour
     #region TRIANGULATION UTILS
     float GetALength(Bone bone)
     {
+        return bone.length;
+
         float length = 0.0001f;
 
         Bone currBone = bone.parentBone;
@@ -275,9 +276,9 @@ public class IKSolver : MonoBehaviour
 
     float GetBLength(Bone bone)
     {
-        float length = 0f;
+        float length = 0.0001f;
 
-        Bone currBone = bone;
+        Bone currBone = bone.childBone;
         while (currBone != null)
         {
             length += currBone.length;

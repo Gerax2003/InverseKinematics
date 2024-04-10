@@ -53,13 +53,13 @@ Benchmarks have been done on each chain present in the scene. The only configura
 The names in this table are the name of the chain in the hierarchy. In every test, the target has been placed in a spot that the chain can reach.  
 "Chain" has constraints in every bone, "Chain2" has constraints in every bone except the 3rd and 5th (last), and "LongChain" has constraints in every bone except every 5th bone.  
 
-|           | CCD, No constraint                                       | CCD, Axis Constraint                                         | CCD, My Angular                                                                             | CCD, Angular Stable                                                                                 |
-|-----------|----------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| Chain     | Average iteration: 0.005ms<br>Total: 0.013 - 0.015ms     | Average iteration: 0.007 - 0.009ms<br>Total: 0.020 - 0.022ms | Average constraint: 0.01ms<br>Average iteration: 0.01ms<br>Total: 0.025 - 0.027ms           | Average constraint: 0.010 - 0.012ms<br>Average iteration: 0.010 - 0.012ms<br>Total: 0.025 - 0.030ms |
-| Chain2    | Average iteration: 0.005ms<br>Total: 0.013 - 0.014ms     | Average iteration: 0.005 - 0.006ms<br>Total: 0.018 - 0.020ms | Average constraint: 0.005ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.020 - 0.023ms | Average constraint: 0.005 - 0.006ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.021 - 0.024ms |
-| LongChain | Average iteration: 0.06 - 0.07ms<br>Total: 0.12 - 0.13ms | Average iteration: 0.08 - 0.10ms<br>Total: 0.16 - 0.18ms     | Average constraint: 0.08ms<br>Average iteration: 0.09 - 0.11ms<br>Total: 0.19 - 0.20ms      | Average constraint: 0.09 - 0.10ms<br>Average iteration: 0.11 - 0.12ms<br>Total: 0.22 - 0.23ms       |  
+|           | CCD, No constraint                                       | Triangulation, No constraint                              | CCD, Axis Constraint                                         | CCD, My Angular                                                                             | CCD, Angular Stable                                                                                 |
+|-----------|----------------------------------------------------------|-----------------------------------------------------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| Chain     | Average iteration: 0.005ms<br>Total: 0.013 - 0.015ms     | Average iteration: 0.13 - 0.14ms<br>Total: 0.20 - 0.22 ms | Average iteration: 0.007 - 0.009ms<br>Total: 0.020 - 0.022ms | Average constraint: 0.01ms<br>Average iteration: 0.01ms<br>Total: 0.025 - 0.027ms           | Average constraint: 0.010 - 0.012ms<br>Average iteration: 0.010 - 0.012ms<br>Total: 0.025 - 0.030ms |
+| Chain2    | Average iteration: 0.005ms<br>Total: 0.013 - 0.014ms     | Average iteration: 0.14 - 0.15ms<br>Total: 0.26 - 0.27ms  | Average iteration: 0.005 - 0.006ms<br>Total: 0.018 - 0.020ms | Average constraint: 0.005ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.020 - 0.023ms | Average constraint: 0.005 - 0.006ms<br>Average iteration: 0.007 - 0.008ms<br>Total: 0.021 - 0.024ms |
+| LongChain | Average iteration: 0.06 - 0.07ms<br>Total: 0.12 - 0.13ms | Average iteration: 0.22 - 0.26ms<br>Total: 0.43 - 0.52ms  | Average iteration: 0.08 - 0.10ms<br>Total: 0.16 - 0.18ms     | Average constraint: 0.08ms<br>Average iteration: 0.09 - 0.11ms<br>Total: 0.19 - 0.20ms      | Average constraint: 0.09 - 0.10ms<br>Average iteration: 0.11 - 0.12ms<br>Total: 0.22 - 0.23ms       |  
 
-As we can see, there is a massive increase in total time as the chain gets longer, but also in the time spent per iteration. We also see that having bones without constraints can significantly reduce the time spent computing the chain.  
+As we can see, there is a massive increase in total time as the chain gets longer, but also in the time spent per iteration. We also see that having bones without constraints can significantly reduce the time spent computing the chain. Triangulation produces worse results than CCD on small chains due to its heavy calculations for its rotations, however its cost growth is steady as only a few bones actually have to rotate.  
 
 ## <h2 id="screens">Screenshots</h2>
 
@@ -69,6 +69,8 @@ Two chains solved using CCD. The left chain has axis and angle constraints enabl
 ![Scene](ReadMeResources/scene.png)  
 This is how the scene looks like in play mode. The texts display the current settings of a chain and the time it takes to solve in real time.  
 
+![triangulation](ReadMeResources/triangulation.png)  
+This is how Triangulation looks when solving a chain. It looks very inorganic but is very optimized, and thus is mostly used with mechanic chains.
 
 ## <h2 id="references">References</h2>
 

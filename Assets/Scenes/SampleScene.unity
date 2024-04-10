@@ -218,9 +218,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   statsText: {fileID: 1487276753}
-  type: 0
-  useConstraints: 1
-  useAngleLimit: 0
+  type: 1
+  useConstraints: 0
+  useAngleLimit: 1
   stableAngleLimit: 0
   target: {fileID: 1408338268}
 --- !u!4 &31003753
@@ -1382,9 +1382,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   statsText: {fileID: 1288848635}
-  type: 0
-  useConstraints: 1
-  useAngleLimit: 0
+  type: 1
+  useConstraints: 0
+  useAngleLimit: 1
   stableAngleLimit: 0
   target: {fileID: 951648259}
 --- !u!4 &528067826
@@ -1498,9 +1498,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   statsText: {fileID: 1656738648}
-  type: 0
-  useConstraints: 1
-  useAngleLimit: 0
+  type: 1
+  useConstraints: 0
+  useAngleLimit: 1
   stableAngleLimit: 0
   target: {fileID: 951648259}
 --- !u!4 &635799115
