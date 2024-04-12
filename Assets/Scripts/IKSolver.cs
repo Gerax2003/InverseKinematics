@@ -189,7 +189,7 @@ public class IKSolver : MonoBehaviour
             }
 
             if (useConstraints)
-                CCDConstraintCalculation(bone, constraintStopwatch, ref totalConstraintTime);
+                TriangulationConstraint(bone, constraintStopwatch, ref totalConstraintTime);
 
             // Go down in chain
             bone = bone.childBone;
@@ -199,6 +199,7 @@ public class IKSolver : MonoBehaviour
             i++;
         }
 
+        statsText.text += "Avg constraint: " + totalConstraintTime / i + " ms\n";
         statsText.text += "Avg iteration: " + totalTime / i + " ms\n";
     }
 
@@ -258,6 +259,45 @@ public class IKSolver : MonoBehaviour
     }
 
     #region TRIANGULATION UTILS
+    // Same as CCD constraints, just using child instead of parent
+    void TriangulationConstraint(Bone bone, Stopwatch constraintStopwatch, ref double totalConstraintTime)
+    {
+        // If the bone has an axis to constrain on, constrain
+        if (bone.jointAxis != Vector3.zero)
+        {
+            constraintStopwatch.Start();
+            Vector3 currAxis = bone.transform.rotation * bone.jointAxis;
+            Vector3 currChildAxis = Vector3.zero;
+
+            if (bone.childBone != null)
+                currChildAxis = bone.childBone.transform.rotation * bone.jointAxis;
+            else
+                currChildAxis = Quaternion.identity * bone.jointAxis;
+
+            bone.transform.rotation = Quaternion.FromToRotation(currChildAxis, currAxis) * bone.transform.rotation;
+
+            if (useAngleLimit)
+            {
+                // Bloated implementation but very stable, used for benchmark performance and quality of other implementations, taken from:
+                // https://github.com/zalo/MathUtilities/blob/master/Assets/Constraints/Constraints.cs | https://github.com/zalo/MathUtilities/blob/master/Assets/IK/CCDIK/CCDIKJoint.cs
+                // !! Only takes max angle into account, needs a positive max! !!
+                if (stableAngleLimit)
+                {
+                    // Find compensating rotation and apply it to unclamped rotation
+                    bone.transform.rotation = CCDAngleStableImpl(bone);
+                }
+                else // just clamp the rotation quaternion's angle around its own axis
+                {
+                    Quaternion clampRotation = ClampRotation(bone.transform.localRotation, bone.jointMinLimits, bone.jointMaxLimits);
+                    bone.transform.localRotation = clampRotation;
+                }
+
+                constraintStopwatch.Stop();
+                totalConstraintTime += constraintStopwatch.Elapsed.TotalMilliseconds;
+            }
+        }
+    }
+
     float GetBLength(Bone bone)
     {
         float length = 0.0001f;

@@ -1383,7 +1383,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   statsText: {fileID: 1288848635}
   type: 1
-  useConstraints: 0
+  useConstraints: 1
   useAngleLimit: 1
   stableAngleLimit: 0
   target: {fileID: 951648259}
