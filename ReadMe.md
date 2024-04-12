@@ -14,7 +14,7 @@ CCD Algorithm
 CCD Axis constraints  
 CCD Angle constraints  
 Time Benchmarking  
-Triangulation improvement on CCD  
+Triangulation  
 
 ## <h2 id="wip">WIP</h2>
 Angular Benchmarking (total angle moved, avg angle movement...)  
